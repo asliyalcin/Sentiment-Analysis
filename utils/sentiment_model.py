@@ -34,15 +34,13 @@ def sentiment_class_from_score(score: float) -> str:
 
 def predict_sentiment_batch(text_list, batch_size=32):
     """
-    df["Cleaned_Feedback"] gibi önceden temizlenmiş bir liste alır.
-
+    Takes a pre-cleaned list such as df["Cleaned_Feedback"].
     """
 
     all_pos = []
     all_neg = []
     all_score = []
     all_label = []
-
 
     cleaned_texts = ["" if t is None else str(t) for t in text_list]
 
@@ -64,7 +62,6 @@ def predict_sentiment_batch(text_list, batch_size=32):
         pos_batch = probs[:, 1].cpu().tolist()
         neg_batch = probs[:, 0].cpu().tolist()
 
-
         score_batch = [1 + 4 * p for p in pos_batch]
         label_batch = [sentiment_class_from_score(s) for s in score_batch]
 
@@ -79,10 +76,12 @@ def predict_sentiment_batch(text_list, batch_size=32):
         "score": all_score,
         "label": all_label
     }
+
+
 def get_sentiment_probs(text: str):
     """
-    TEK bir metin için olasılık döndürür.
-    {'neg': 0.xx, 'pos': 0.yy} formatında.
+    Returns probabilities for a SINGLE text.
+    Output format: {'neg': 0.xx, 'pos': 0.yy}
     """
     inputs = tokenizer(
         text,
@@ -96,7 +95,7 @@ def get_sentiment_probs(text: str):
         outputs = model(**inputs)
         probs = F.softmax(outputs.logits, dim=1).flatten()
 
-    # 0: negatif, 1: pozitif
+    # 0: negative, 1: positive
     return {
         "neg": float(probs[0]),
         "pos": float(probs[1]),

@@ -29,24 +29,24 @@ def generate_embeddings_for_unique_texts(
     batch_size: int = 32,
 ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame, SentenceTransformer]:
     """
-    - Textleri normalize edip unique hale getirir.
-    - SentenceTransformer ile embedding üretir.
-    - emb_matrix'i float16'e cast ederek bellek kullanımını düşürür.
+    - Normalizes texts and extracts unique entries.
+    - Generates embeddings using SentenceTransformer.
+    - Casts emb_matrix to float16 for memory optimization.
 
     Returns:
         emb_matrix: shape (N_unique, d), dtype=float16
         unique_texts: np.ndarray (N_unique,)
-        mapping_df: text -> emb_idx eşleşmesi
-        embed_model: yüklü model
+        mapping_df: text -> emb_idx mapping
+        embed_model: loaded model
     """
-    print(f"[INFO] Embedding modeli yükleniyor: {embed_model_name}")
+    print(f"[INFO] Loading embedding model: {embed_model_name}")
     embed_model = SentenceTransformer(embed_model_name)
 
     normalized_series = df[text_column].astype(str).apply(normalize_fn)
     unique_texts = normalized_series.unique()
-    print(f"[INFO] Unique (normalized) text sayısı: {len(unique_texts)}")
+    print(f"[INFO] Number of unique (normalized) texts: {len(unique_texts)}")
 
-    print("[INFO] Embedding oluşturuluyor...")
+    print("[INFO] Generating embeddings...")
     emb_matrix = embed_model.encode(
         list(unique_texts),
         batch_size=batch_size,
@@ -60,7 +60,7 @@ def generate_embeddings_for_unique_texts(
         "emb_idx": np.arange(len(unique_texts), dtype=int)
     })
 
-    print("[INFO] Embedding işlemi tamamlandı.")
+    print("[INFO] Embedding generation completed.")
     print(f"[INFO] emb_matrix shape: {emb_matrix.shape}, dtype: {emb_matrix.dtype}")
 
     return emb_matrix, unique_texts, mapping_df, embed_model
@@ -76,10 +76,10 @@ def _retrieve_topk_indices_and_sims(
     top_k: int = 20,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Query'yi embed eder, tüm emb_matrix ile cosine similarity hesaplar,
-    en benzer top_k index'i ve skorlarını döner.
+    Embeds the query, computes cosine similarity with emb_matrix,
+    returns top_k indices and similarity scores.
 
-    - np.argpartition kullanarak O(N) top_k seçimi yapar (tam sort'tan daha hızlı).
+    - Uses np.argpartition for O(N) top-k selection (faster than full sorting).
     """
     q_norm = normalize_fn(query_text)
     query_emb = embed_model.encode([q_norm])
@@ -89,7 +89,7 @@ def _retrieve_topk_indices_and_sims(
     if top_k >= len(sims):
         top_idx = np.argsort(-sims)
     else:
-        # Önce top_k'yi partition ile seç (O(N)), sonra kendi içinde sort et.
+        # Partition first to get top_k (O(N)), then sort those top_k.
         top_idx_part = np.argpartition(-sims, top_k - 1)[:top_k]
         top_idx = top_idx_part[np.argsort(-sims[top_idx_part])]
 
@@ -107,9 +107,9 @@ def most_similar_feedback(
     normalize_fn=normalize_for_embedding,
 ) -> pd.DataFrame:
     """
-    Saf semantic search:
+    Pure semantic search:
     - Query embedding + cosine similarity
-    - En benzer top_k normalized feedback
+    - Returns top_k most similar normalized feedback
     """
     top_idx, sims_top = _retrieve_topk_indices_and_sims(
         query_text=query_text,
@@ -142,7 +142,7 @@ def rag_query(
     normalize_fn=normalize_for_embedding,
 ):
     """
-    Optimize edilmiş RAG sorgusu + zaman ölçümü.
+    Optimized RAG query + latency measurement.
 
     Returns:
         sub_df (pd.DataFrame)
@@ -151,7 +151,6 @@ def rag_query(
         stats_time (float, seconds)
         total_time (float, seconds)
     """
-
 
     t0 = time.perf_counter()
 
@@ -211,7 +210,7 @@ def rag_query(
 
 
 # -----------------------------
-# Latency karşılaştırma (retrieval + RAG pipeline)
+# Latency comparison (retrieval + RAG pipeline)
 # -----------------------------
 def compare_rag_vs_nonrag(
     df: pd.DataFrame,
@@ -223,8 +222,11 @@ def compare_rag_vs_nonrag(
     top_k: int = 20,
 ) -> Tuple[float, float]:
     """
-    Non-RAG (most_similar_feedback) vs RAG (rag_query) latency karşılaştırması.
-    Grafik üretimi yok, sadece retrieval + RAG'in kendi iç işlemleri ölçülür.
+    Latency comparison:
+    - Non-RAG (most_similar_feedback)
+    - RAG (rag_query)
+
+    Measures only retrieval-related time (no charting).
     """
     # Non-RAG
     t0 = time.perf_counter()

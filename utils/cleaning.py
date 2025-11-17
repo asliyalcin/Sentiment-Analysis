@@ -10,6 +10,5 @@ def clean_text(text,stopwords_tr_nltk):
 def normalize_for_embedding(text):
     if not isinstance(text, str):
         return ""
-    # Baştaki, sondaki ve fazla iç boşlukları toparla
     text = " ".join(text.split())
     return text
