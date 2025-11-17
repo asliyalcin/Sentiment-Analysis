@@ -47,8 +47,8 @@ It is written in a fully modular and scalable structure suitable for production-
 ```
 Sentiment-Analysis/
 │
-├── notebook/
-│   └── full_sentiment_rag_pipeline.ipynb
+├── full_sentiment_rag_pipeline.ipynb
+│   
 │
 ├── utils/
 │   ├── cleaning.py
